@@ -260,7 +260,7 @@ function load(cb) {
     .then(function(r){ return r.text(); })
     .then(function(text){
       entries=parseCSV(text).map(function(r){
-        return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],detalle:r[4],importe:parseFloat(r[5])||0,pagado:r[6]==='Si'};
+        return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],importe:parseFloat(r[4])||0,pagado:r[5]==='Si'};
       }).filter(function(e){ return e.detalle&&e.detalle.length>0; });
       sync('ok'); fillMonths(); if(cb) cb();
     })
