@@ -261,7 +261,7 @@ function load(cb) {
     .then(function(text){
       entries=parseCSV(text).map(function(r){
         return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],importe:parseFloat(r[4])||0,pagado:r[5]==='Si'};
-      }).filter(function(e){ return e.detalle&&e.detalle.length>0; });
+      }).filter(function(e){ return e.id && e.importe > 0; });
       sync('ok'); fillMonths(); if(cb) cb();
     })
     .catch(function(){ sync('error'); toast('Sin conexion'); if(cb) cb(); });
