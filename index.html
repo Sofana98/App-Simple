@@ -1,177 +1,76 @@
 <script>
-var SCRIPT  = 'https://script.google.com/macros/s/AKfycbzUmXhYQ8k8tgkzndLflebj3cg0oAl1e9cEett-c-_Txh0WC44rCuT28INsYjQ_u6A/exec';
+var SCRIPT  = 'https://script.google.com/macros/s/AKfycbyrsPdX8RXAUUg77pdtj6_E4Fl_1DWCPECdy3rnYz-vvSLHtKbCTORWJfsFH7CAggW1/exec';
+var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_uhZPwcoABZBlg3B3EmTniWUT4REz-ln6nxKrV55mPSt9KA2t-OSrdQmrnn1PLeqOxOjawQP9vPMt/pub?gid=0&single=true&output=csv';
 
-var CATS = ['🏠 Alquiler','📋 Expensas','💡 Luz','💧 Agua','🔥 Gas','📶 Internet','🛒 Comida','🧹 Limpieza','🚗 Auto','🔧 Mantenimiento','🎉 Salidas'];
-var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-var usuario = null;
-var state = { pag:'Sofi', cat:CATS[0] };
 var entries = [];
-var editingId = null;
 
-// =======================
-// HELPERS
-// =======================
-function todayStr() {
-  var d=new Date();
-  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
-}
-function mk(f) {
-  var d=new Date(f);
-  return isNaN(d.getTime())?'':d.getFullYear()+'-'+d.getMonth();
-}
-function curMK() {
-  var d=new Date();
-  return d.getFullYear()+'-'+d.getMonth();
-}
-function ars(n) {
-  return '$'+Math.round(n).toLocaleString('es-AR');
-}
-function fmtDate(f) {
-  return new Date(f).toLocaleDateString('es-AR',{day:'numeric',month:'short'});
-}
-
-// =======================
-// SYNC STATUS
-// =======================
 function sync(s) {
-  var p=document.getElementById('spill'),
-      d=document.getElementById('sdot'),
-      t=document.getElementById('stxt');
-
-  p.className='sync-pill '+s;
-  d.className='sync-dot'+(s==='syncing'?' blink':'');
-
-  t.textContent =
-    s==='ok' ? 'Sincronizado' :
-    s==='syncing' ? 'Sincronizando' :
-    'Sin conexion';
+  console.log("SYNC:", s);
 }
 
-// =======================
-// TOAST
-// =======================
 function toast(msg) {
-  var el=document.getElementById('toast');
-  el.textContent=msg;
-  el.classList.add('show');
-  setTimeout(function(){ el.classList.remove('show'); },2500);
+  console.log("TOAST:", msg);
 }
 
-// =======================
-// LOAD (TIEMPO REAL)
-// =======================
+function parseCSV(text) {
+  return text.trim().split('\n').map(function(line){
+    return line.split(',');
+  });
+}
+
 function load(cb) {
-  sync('syncing');
+  console.log("Cargando datos...");
 
-  fetch(SCRIPT + '?t=' + Date.now())
-    .then(function(r){ return r.json(); })
-    .then(function(data){
+  fetch(CSV_URL + '&t=' + Date.now())
+    .then(r => r.text())
+    .then(text => {
+      console.log("CSV RAW:", text);
 
-      entries = data.map(function(r){
+      var rows = parseCSV(text);
+
+      // ⚠️ saltar encabezado
+      rows.shift();
+
+      entries = rows.map(function(r){
         return {
-          id:String(r[0]),
-          fecha:r[1],
-          pagador:r[2],
-          categoria:r[3],
-          detalle:r[4],
-          importe:parseFloat(r[5])||0,
-          pagado:r[6]==='Si'
+          id: r[0],
+          fecha: r[1],
+          pagador: r[2],
+          categoria: r[3],
+          detalle: r[4],
+          importe: parseFloat(r[5]) || 0,
+          pagado: r[6] === 'Si'
         };
       });
 
-      sync('ok');
-      if(cb) cb();
+      console.log("ENTRIES:", entries);
 
+      if(cb) cb();
     })
-    .catch(function(){
-      sync('error');
-      toast('Sin conexion');
+    .catch(err => {
+      console.error("ERROR FETCH:", err);
+      toast('Error cargando datos');
     });
 }
 
-// =======================
-// POST (FIX CORS)
-// =======================
-function post(body,cb) {
-  sync('syncing');
-
-  fetch(SCRIPT,{
-    method:'POST',
-    redirect:'follow', // 🔥 CLAVE
-    headers:{
-      'Content-Type':'text/plain;charset=utf-8' // 🔥 CLAVE
-    },
-    body:JSON.stringify(body)
+function post(body, cb) {
+  fetch(SCRIPT, {
+    method: 'POST',
+    headers: {'Content-Type':'text/plain'},
+    body: JSON.stringify(body)
   })
-  .then(function(r){ return r.text(); })
-  .then(function(){
-    sync('ok');
+  .then(r => r.text())
+  .then(() => {
     if(cb) cb(true);
   })
-  .catch(function(){
-    sync('error');
+  .catch(() => {
     if(cb) cb(false);
   });
 }
 
-// =======================
-// GUARDAR
-// =======================
-function guardar() {
-  var imp=parseFloat(document.getElementById('importe').value);
-  var fechaVal=document.getElementById('fecha').value;
-
-  if(!imp || imp<=0){ toast('Importe invalido'); return; }
-  if(!fechaVal){ toast('Falta fecha'); return; }
-
-  var body={
-    action:'add',
-    id:Date.now()+'',
-    fecha:new Date(fechaVal+'T12:00:00').toISOString(),
-    pagador:state.pag,
-    categoria:state.cat,
-    detalle:state.cat,
-    importe:imp,
-    pagado:'No'
-  };
-
-  post(body,function(ok){
-    if(ok){
-      toast('Guardado!');
-      load(renderHist);
-    } else {
-      toast('Error');
-    }
-  });
-}
-
-// =======================
-// HISTORIAL
-// =======================
-function renderHist() {
-  var el=document.getElementById('h-list');
-
-  if(!entries.length){
-    el.innerHTML='<div class="empty">Sin datos</div>';
-    return;
-  }
-
-  el.innerHTML=entries.map(function(e){
-    return '<div>'+e.categoria+' - '+ars(e.importe)+'</div>';
-  }).join('');
-}
-
-// =======================
-// AUTO SYNC
-// =======================
+// 🔁 REFRESH AUTOMÁTICO (cada 5 segundos)
 setInterval(function(){
   load();
-},5000);
+}, 5000);
 
-// INIT
-window.onload=function(){
-  document.getElementById('fecha').value=todayStr();
-  load(renderHist);
-}
 </script>
