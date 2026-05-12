@@ -188,7 +188,7 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
 <div class="toast" id="toast"></div>
 
 <script>
-var SCRIPT  = 'https://script.google.com/macros/s/AKfycbyhlnqxVVjje4TKmpThd-CrYybza-DM5yqnGCbD0T6X1jXWjEpG06abY0l7dWWXQT-F/exec';
+var SCRIPT  = 'https://script.google.com/macros/s/AKfycbyrsPdX8RXAUUg77pdtj6_E4Fl_1DWCPECdy3rnYz-vvSLHtKbCTORWJfsFH7CAggW1/exec';
 var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_uhZPwcoABZBlg3B3EmTniWUT4REz-ln6nxKrV55mPSt9KA2t-OSrdQmrnn1PLeqOxOjawQP9vPMt/pub?gid=0&single=true&output=csv';
 
 var CATS = ['🏠 Alquiler','📋 Expensas','💡 Luz','💧 Agua','🔥 Gas','📶 Internet','🛒 Comida','🧹 Limpieza','🚗 Auto','🔧 Mantenimiento','🎉 Salidas'];
@@ -260,7 +260,7 @@ function load(cb) {
     .then(function(r){ return r.text(); })
     .then(function(text){
       entries=parseCSV(text).map(function(r){
-        return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],detalle:r[4],importe:parseFloat(r[5])||0};
+        return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],detalle:r[4],importe:parseFloat(r[5])||0,pagado:r[6]==='Si'};
       }).filter(function(e){ return e.detalle&&e.detalle.length>0; });
       sync('ok'); fillMonths(); if(cb) cb();
     })
@@ -322,7 +322,7 @@ document.getElementById('savebtn').addEventListener('click',function(){
   var btn=document.getElementById('savebtn'); btn.disabled=true; btn.textContent='Guardando...';
   var body={action:editingId?'edit':'add',id:editingId||Date.now()+'',
     fecha:new Date(fechaVal+'T12:00:00').toISOString(),
-    pagador:state.pag,categoria:state.cat,detalle:state.cat,importe:imp};
+    pagador:state.pag,categoria:state.cat,detalle:state.cat,importe:imp,pagado:'No'};
   post(body,function(ok){
     btn.disabled=false;
     if(ok){ toast(editingId?'Cambios guardados!':'Guardado!'); resetForm(); setTimeout(function(){ load(); },2000); }
@@ -364,20 +364,33 @@ function renderHist() {
   var el=document.getElementById('h-list');
   if(!list.length){ el.innerHTML='<div class="empty">Sin registros este mes</div>'; return; }
   el.innerHTML=list.map(function(e){
-    return '<div class="entry">'
-      +'<div class="entry-top"><div style="min-width:0;flex:1;"><div class="entry-name">'+e.detalle+'</div></div>'
+    return '<div class="entry" style="'+(e.pagado?'opacity:0.45':'')+'">'
+      +'<div class="entry-top"><div style="min-width:0;flex:1;"><div class="entry-name">'+e.categoria+'</div></div>'
       +'<div class="entry-right"><div class="entry-amount">'+ars(e.importe)+'</div>'
-      +'<button type="button" class="edit-btn" data-id="'+e.id+'">✏️</button>'
+      +'<button type="button" class="pago-btn" data-id="'+e.id+'" title="'+(e.pagado?'Desmarcar':'Marcar como pagado')+'">'+(e.pagado?'↩️':'✅')+'</button>'
       +'<button type="button" class="del-btn" data-id="'+e.id+'">✕</button>'
       +'</div></div>'
       +'<div class="entry-meta">'
       +'<span class="badge '+(e.pagador==='Sofi'?'bs':'bg')+'">'+e.pagador+' pago</span>'
-      +'<span class="badge bcat">'+e.categoria+'</span>'
+      +(e.pagado?'<span class="badge" style="background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0;">Saldado</span>':'')
       +'<span class="edate">'+fmtDate(e.fecha)+'</span>'
       +'</div></div>';
   }).join('');
-  el.querySelectorAll('.edit-btn').forEach(function(b){ b.addEventListener('click',function(){ editEntry(this.getAttribute('data-id')); }); });
+  el.querySelectorAll('.pago-btn').forEach(function(b){ b.addEventListener('click',function(){ togglePagado(this.getAttribute('data-id')); }); });
   el.querySelectorAll('.del-btn').forEach(function(b){ b.addEventListener('click',function(){ delEntry(this.getAttribute('data-id')); }); });
+}
+
+function togglePagado(id) {
+  var e = entries.find(function(x){ return x.id===id; }); if(!e) return;
+  var nuevoPagado = e.pagado ? 'No' : 'Si';
+  post({action:'pagado', id:id, pagado:nuevoPagado}, function(ok){
+    if(ok){
+      e.pagado = !e.pagado;
+      toast(e.pagado ? 'Marcado como saldado' : 'Marcado como pendiente');
+      renderHist();
+      renderRes();
+    } else toast('Error al actualizar');
+  });
 }
 
 function delEntry(id) {
@@ -390,7 +403,8 @@ function delEntry(id) {
 
 // Balance: positivo = Sofi le debe a Guille
 function calcNeto(key) {
-  var list=entries.filter(function(e){ return mk(e.fecha)===key; });
+  // Solo cuenta gastos NO saldados
+  var list=entries.filter(function(e){ return mk(e.fecha)===key && !e.pagado; });
   var dSofi=0,dGuille=0;
   list.forEach(function(e){
     if(e.pagador==='Guille') dSofi+=e.importe/2;  // Guille pago, Sofi debe la mitad
@@ -473,9 +487,9 @@ function renderRes() {
     h+='<div class="card"><div style="font-size:11px;font-weight:800;color:#aaa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Todos los gastos</div>';
     var sorted=[].concat(list).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
     sorted.forEach(function(e){
-      h+='<div class="res-entry">'
-        +'<div class="res-left"><div class="res-name">'+e.detalle+'</div>'
-        +'<div class="res-meta">'+e.categoria+' · '+fmtDate(e.fecha)+'</div></div>'
+      h+='<div class="res-entry" style="'+(e.pagado?'opacity:0.4':'')+'">'
+        +'<div class="res-left"><div class="res-name">'+e.categoria+'</div>'
+        +'<div class="res-meta">'+fmtDate(e.fecha)+(e.pagado?' · <span style="color:#16A34A;font-weight:700;">Saldado</span>':'')+'</div></div>'
         +'<div class="res-right"><div class="res-total">'+ars(e.importe)+'</div>'
         +'<div class="res-split"><span style="color:'+(e.pagador==='Sofi'?'#C9406A':'#2563EB')+'">'+e.pagador+'</span> · c/u '+ars(e.importe/2)+'</div>'
         +'</div></div>';
