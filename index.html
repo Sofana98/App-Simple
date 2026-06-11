@@ -172,6 +172,13 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
           <label>Observacion (opcional)</label>
           <input type="text" id="observacion" placeholder="Ej: mes de abril, cuotas, etc..." autocomplete="off" />
         </div>
+        <div class="field" id="field-yapagado">
+          <label>Estado del pago</label>
+          <div class="toggle-row">
+            <button type="button" class="tb sel" data-group="yapagado" data-val="No">Pendiente</button>
+            <button type="button" class="tb" data-group="yapagado" data-val="Si" style="">Ya lo pagamos c/u</button>
+          </div>
+        </div>
       </div>
       <button type="button" class="save-btn" id="savebtn">Guardar</button>
       <button type="button" class="cancel-btn" id="cancelbtn" style="display:none">Cancelar edicion</button>
@@ -196,11 +203,12 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
 var SCRIPT  = 'https://script.google.com/macros/s/AKfycbxVrJ1GJnOJrY9hMIZjgG4SwRQuefW4wwZAW9SfHoPZpykWFRR0OoytdpYJGW9Tjxhx5w/exec';
 var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQIiU3cnMG2aC9O0OmLqE-DmdI11UobljHNFw2GWEiGO7iMggCPqdbigKa1oCCxZHYz-oaQyHMOYX6k/pub?gid=0&single=true&output=csv';
 
-var CATS = ['🏠 Alquiler','🗒️ Expensas','💡 Luz','💧 Agua','🔥 Gas','🛜 Internet','🥗 Verduleria','🥩 Carnes','🛒 Super','🚗 Auto','🎉 Salidas','🚕 Ubers','🍕 Delivery','🧹 Limpieza','🔧 Mantenimiento'];
+var CATS = ['🏠 Alquiler','🗒️ Expensas','💡 Luz','💧 Agua','🔥 Gas','🛜 Internet','🥗 Verduleria','🥩 Carnes','🛒 Super','🚗 Auto','🎉 Salidas','🚕 Ubers','🍕 Delivery','🧹 Limpieza','🔧 Mantenimiento','💸 Saldo de deuda'];
+var CAT_SALDO = '💸 Saldo de deuda';
 var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 var usuario = null;
-var state = { pag:'Sofi', cat:CATS[0] };
+var state = { pag:'Sofi', cat:CATS[0], yapagado:'No' };
 var entries = [];
 var editingId = null;
 
@@ -287,7 +295,13 @@ document.addEventListener('click',function(e){
   container.querySelectorAll('[data-group="'+group+'"]').forEach(function(b){ b.classList.remove('sel','sofi-s','guille-s','cat-s'); });
   btn.classList.add('sel');
   if(group==='pag'){ state.pag=val; btn.classList.add(val==='Sofi'?'sofi-s':'guille-s'); }
-  if(group==='cat'){ state.cat=val; btn.classList.add('cat-s'); }
+  if(group==='cat'){
+    state.cat=val; btn.classList.add('cat-s');
+    var isSaldo = val === CAT_SALDO;
+    document.getElementById('field-yapagado').style.display = isSaldo ? 'none' : '';
+    if(isSaldo){ state.yapagado='No'; }
+  }
+  if(group==='yapagado'){ state.yapagado=val; }
 });
 
 function showTab(t) {
@@ -313,6 +327,9 @@ function resetForm() {
   document.getElementById('importe').value='';
   document.getElementById('fecha').value=todayStr();
   document.getElementById('observacion').value='';
+  state.yapagado='No';
+  document.querySelectorAll('[data-group="yapagado"]').forEach(function(b){ b.classList.remove('sel'); });
+  document.querySelector('[data-group="yapagado"][data-val="No"]').classList.add('sel');
   state.pag=usuario||'Sofi'; state.cat=CATS[0];
   document.querySelectorAll('[data-group="pag"]').forEach(function(b){ b.classList.remove('sel','sofi-s','guille-s'); });
   var pb=document.querySelector('[data-group="pag"][data-val="'+(usuario||'Sofi')+'"]');
@@ -330,7 +347,7 @@ document.getElementById('savebtn').addEventListener('click',function(){
   var btn=document.getElementById('savebtn'); btn.disabled=true; btn.textContent='Guardando...';
   var body={action:editingId?'edit':'add',id:editingId||Date.now()+'',
     fecha:new Date(fechaVal+'T12:00:00').toISOString(),
-    pagador:state.pag,categoria:state.cat,importe:imp,observacion:obs,pagado:'No'};
+    pagador:state.pag,categoria:state.cat,importe:imp,observacion:obs,pagado:state.yapagado};
   post(body,function(ok){
     btn.disabled=false;
     if(ok){ toast(editingId?'Cambios guardados!':'Guardado!'); resetForm(); setTimeout(function(){ load(); },2000); }
@@ -353,6 +370,10 @@ function editEntry(id) {
   if(!isNaN(d.getTime())) document.getElementById('fecha').value=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
   document.getElementById('importe').value=e.importe;
   document.getElementById('observacion').value=e.observacion||'';
+  state.yapagado=e.pagado?'Si':'No';
+  document.querySelectorAll('[data-group="yapagado"]').forEach(function(b){ b.classList.remove('sel'); });
+  var yp=document.querySelector('[data-group="yapagado"][data-val="'+(e.pagado?'Si':'No')+'"]');
+  if(yp) yp.classList.add('sel');
   initCats();
   window.scrollTo(0,0);
 }
@@ -373,17 +394,20 @@ function renderHist() {
   var el=document.getElementById('h-list');
   if(!list.length){ el.innerHTML='<div class="empty">Sin registros este mes</div>'; return; }
   el.innerHTML=list.map(function(e){
-    return '<div class="entry">'
+    var isSaldo = e.categoria===CAT_SALDO;
+    return '<div class="entry" style="'+(e.pagado&&!isSaldo?'opacity:0.5':'')+'">'
       +'<div class="entry-top"><div style="min-width:0;flex:1;">'
       +'<div class="entry-name">'+e.categoria+'</div>'
       +(e.observacion?'<div class="entry-obs">'+e.observacion+'</div>':'')
       +'</div>'
-      +'<div class="entry-right"><div class="entry-amount">'+ars(e.importe)+'</div>'
+      +'<div class="entry-right"><div class="entry-amount" style="color:'+(isSaldo?'#16A34A':'#DC2626')+';">'+(isSaldo?'-':'')+ars(e.importe)+'</div>'
       +'<button type="button" class="edit-btn" data-id="'+e.id+'">✏️</button>'
       +'<button type="button" class="del-btn" data-id="'+e.id+'">✕</button>'
       +'</div></div>'
       +'<div class="entry-meta">'
       +'<span class="badge '+(e.pagador==='Sofi'?'bs':'bg')+'">'+e.pagador+' pago</span>'
+      +(e.pagado&&!isSaldo?'<span class="badge" style="background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0;">c/u pago su mitad</span>':'')
+      +(isSaldo?'<span class="badge" style="background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0;">Saldo saldado</span>':'')
       +'<span class="edate">'+fmtDate(e.fecha)+'</span>'
       +'</div></div>';
   }).join('');
@@ -403,6 +427,15 @@ function calcNeto(key) {
   var list=entries.filter(function(e){ return mk(e.fecha)===key; });
   var dSofi=0,dGuille=0;
   list.forEach(function(e){
+    // Gastos ya pagados por cada uno: no generan deuda
+    if(e.pagado) return;
+    // Saldo de deuda: si Sofi carga = pago a Guille (resta deuda de Sofi)
+    //                 si Guille carga = pago a Sofi (resta deuda de Guille)
+    if(e.categoria===CAT_SALDO){
+      if(e.pagador==='Sofi') dSofi -= e.importe;   // Sofi salda su deuda
+      else dGuille -= e.importe;                     // Guille salda su deuda
+      return;
+    }
     if(e.pagador==='Guille') dSofi+=e.importe/2;
     else dGuille+=e.importe/2;
   });
