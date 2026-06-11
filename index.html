@@ -60,6 +60,7 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
 .entry:last-child { border-bottom: none; }
 .entry-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .entry-name { font-size: 15px; font-weight: 600; }
+.entry-obs { font-size: 12px; color: #999; margin-top: 2px; }
 .entry-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .entry-amount { font-size: 16px; font-weight: 800; color: #DC2626; }
 .edit-btn { background: none; border: none; color: #bbb; cursor: pointer; font-size: 15px; padding: 4px 5px; touch-action: manipulation; }
@@ -102,7 +103,7 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
 .res-entry { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #F0EDE6; gap: 8px; }
 .res-entry:last-child { border-bottom: none; }
 .res-left { flex: 1; min-width: 0; }
-.res-name { font-size: 13px; color: #1A1916; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res-name { font-size: 13px; color: #1A1916; font-weight: 500; }
 .res-meta { font-size: 11px; color: #aaa; margin-top: 2px; }
 .res-right { text-align: right; flex-shrink: 0; }
 .res-total { font-size: 14px; font-weight: 800; color: #DC2626; }
@@ -167,6 +168,10 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
           <label>Fecha</label>
           <input type="date" id="fecha" />
         </div>
+        <div class="field">
+          <label>Observacion (opcional)</label>
+          <input type="text" id="observacion" placeholder="Ej: mes de abril, cuotas, etc..." autocomplete="off" />
+        </div>
       </div>
       <button type="button" class="save-btn" id="savebtn">Guardar</button>
       <button type="button" class="cancel-btn" id="cancelbtn" style="display:none">Cancelar edicion</button>
@@ -191,7 +196,7 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
 var SCRIPT  = 'https://script.google.com/macros/s/AKfycbxVrJ1GJnOJrY9hMIZjgG4SwRQuefW4wwZAW9SfHoPZpykWFRR0OoytdpYJGW9Tjxhx5w/exec';
 var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQIiU3cnMG2aC9O0OmLqE-DmdI11UobljHNFw2GWEiGO7iMggCPqdbigKa1oCCxZHYz-oaQyHMOYX6k/pub?gid=0&single=true&output=csv';
 
-var CATS = ['🏠 Alquiler','🗒️ Expensas','💡 Luz','💧 Agua','🔥 Gas','🛜 Internet','🛒 Comida','🧹 Limpieza','🚗 Auto','🔧 Mantenimiento','🎉 Salidas'];
+var CATS = ['🏠 Alquiler','🗒️ Expensas','💡 Luz','💧 Agua','🔥 Gas','🛜 Internet','','🥗 Verduleria','🥩 Carnes','🛒 Super','🚗 Auto','🎉 Salidas','🚕 Ubers','🍕 Delivery','🧹 Limpieza','🔧 Mantenimiento'];
 var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 var usuario = null;
@@ -260,7 +265,8 @@ function load(cb) {
     .then(function(r){ return r.text(); })
     .then(function(text){
       entries=parseCSV(text).map(function(r){
-        return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],importe:parseFloat(r[4])||0,pagado:r[5]==='Si'};
+        // Columnas: id, fecha, pagador, categoria, importe, observacion, pagado
+        return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],importe:parseFloat(r[4])||0,observacion:r[5]||'',pagado:r[6]==='Si'};
       }).filter(function(e){ return e.id && e.importe > 0; });
       sync('ok'); fillMonths(); if(cb) cb();
     })
@@ -306,6 +312,7 @@ function resetForm() {
   document.getElementById('cancelbtn').style.display='none';
   document.getElementById('importe').value='';
   document.getElementById('fecha').value=todayStr();
+  document.getElementById('observacion').value='';
   state.pag=usuario||'Sofi'; state.cat=CATS[0];
   document.querySelectorAll('[data-group="pag"]').forEach(function(b){ b.classList.remove('sel','sofi-s','guille-s'); });
   var pb=document.querySelector('[data-group="pag"][data-val="'+(usuario||'Sofi')+'"]');
@@ -319,10 +326,11 @@ document.getElementById('savebtn').addEventListener('click',function(){
   if(!imp||imp<=0){ toast('Ingresa un importe valido'); return; }
   var fechaVal=document.getElementById('fecha').value;
   if(!fechaVal){ toast('Ingresa una fecha'); return; }
+  var obs=document.getElementById('observacion').value.trim();
   var btn=document.getElementById('savebtn'); btn.disabled=true; btn.textContent='Guardando...';
   var body={action:editingId?'edit':'add',id:editingId||Date.now()+'',
     fecha:new Date(fechaVal+'T12:00:00').toISOString(),
-    pagador:state.pag,categoria:state.cat,detalle:state.cat,importe:imp,pagado:'No'};
+    pagador:state.pag,categoria:state.cat,importe:imp,observacion:obs,pagado:'No'};
   post(body,function(ok){
     btn.disabled=false;
     if(ok){ toast(editingId?'Cambios guardados!':'Guardado!'); resetForm(); setTimeout(function(){ load(); },2000); }
@@ -344,6 +352,7 @@ function editEntry(id) {
   var d=new Date(e.fecha);
   if(!isNaN(d.getTime())) document.getElementById('fecha').value=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
   document.getElementById('importe').value=e.importe;
+  document.getElementById('observacion').value=e.observacion||'';
   initCats();
   window.scrollTo(0,0);
 }
@@ -364,33 +373,22 @@ function renderHist() {
   var el=document.getElementById('h-list');
   if(!list.length){ el.innerHTML='<div class="empty">Sin registros este mes</div>'; return; }
   el.innerHTML=list.map(function(e){
-    return '<div class="entry" style="'+(e.pagado?'opacity:0.45':'')+'">'
-      +'<div class="entry-top"><div style="min-width:0;flex:1;"><div class="entry-name">'+e.categoria+'</div></div>'
+    return '<div class="entry">'
+      +'<div class="entry-top"><div style="min-width:0;flex:1;">'
+      +'<div class="entry-name">'+e.categoria+'</div>'
+      +(e.observacion?'<div class="entry-obs">'+e.observacion+'</div>':'')
+      +'</div>'
       +'<div class="entry-right"><div class="entry-amount">'+ars(e.importe)+'</div>'
-      +'<button type="button" class="pago-btn" data-id="'+e.id+'" title="'+(e.pagado?'Desmarcar':'Marcar como pagado')+'">'+(e.pagado?'↩️':'✅')+'</button>'
+      +'<button type="button" class="edit-btn" data-id="'+e.id+'">✏️</button>'
       +'<button type="button" class="del-btn" data-id="'+e.id+'">✕</button>'
       +'</div></div>'
       +'<div class="entry-meta">'
       +'<span class="badge '+(e.pagador==='Sofi'?'bs':'bg')+'">'+e.pagador+' pago</span>'
-      +(e.pagado?'<span class="badge" style="background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0;">Saldado</span>':'')
       +'<span class="edate">'+fmtDate(e.fecha)+'</span>'
       +'</div></div>';
   }).join('');
-  el.querySelectorAll('.pago-btn').forEach(function(b){ b.addEventListener('click',function(){ togglePagado(this.getAttribute('data-id')); }); });
+  el.querySelectorAll('.edit-btn').forEach(function(b){ b.addEventListener('click',function(){ editEntry(this.getAttribute('data-id')); }); });
   el.querySelectorAll('.del-btn').forEach(function(b){ b.addEventListener('click',function(){ delEntry(this.getAttribute('data-id')); }); });
-}
-
-function togglePagado(id) {
-  var e = entries.find(function(x){ return x.id===id; }); if(!e) return;
-  var nuevoPagado = e.pagado ? 'No' : 'Si';
-  post({action:'pagado', id:id, pagado:nuevoPagado}, function(ok){
-    if(ok){
-      e.pagado = !e.pagado;
-      toast(e.pagado ? 'Marcado como saldado' : 'Marcado como pendiente');
-      renderHist();
-      renderRes();
-    } else toast('Error al actualizar');
-  });
 }
 
 function delEntry(id) {
@@ -401,14 +399,12 @@ function delEntry(id) {
   });
 }
 
-// Balance: positivo = Sofi le debe a Guille
 function calcNeto(key) {
-  // Solo cuenta gastos NO saldados
-  var list=entries.filter(function(e){ return mk(e.fecha)===key && !e.pagado; });
+  var list=entries.filter(function(e){ return mk(e.fecha)===key; });
   var dSofi=0,dGuille=0;
   list.forEach(function(e){
-    if(e.pagador==='Guille') dSofi+=e.importe/2;  // Guille pago, Sofi debe la mitad
-    else dGuille+=e.importe/2;                      // Sofi pago, Guille debe la mitad
+    if(e.pagador==='Guille') dSofi+=e.importe/2;
+    else dGuille+=e.importe/2;
   });
   return dSofi-dGuille;
 }
@@ -425,7 +421,6 @@ function calcSaldoAnt(key) {
 
 function renderRes() {
   var key=document.getElementById('r-mes').value;
-  var p=key.split('-');
   var list=entries.filter(function(e){ return mk(e.fecha)===key; });
   var total=list.reduce(function(a,b){ return a+b.importe; },0);
   var netoMes=calcNeto(key);
@@ -433,19 +428,16 @@ function renderRes() {
   var netoTotal=netoMes+saldoAnt;
   var h='';
 
-  // Stats
   h+='<div class="stat-grid">'
     +'<div class="stat"><div class="slabel">Total del mes</div><div class="sval red">'+ars(total)+'</div></div>'
     +'<div class="stat"><div class="slabel">Mitad c/u</div><div class="sval red">'+ars(total/2)+'</div></div>'
     +'</div>';
 
-  // Saldo anterior
   if(Math.abs(saldoAnt)>1){
     var sAntTxt=saldoAnt>0?'Sofi venia debiendo '+ars(Math.abs(saldoAnt)):'Guille venia debiendo '+ars(Math.abs(saldoAnt));
     h+='<div class="saldo-card"><div class="saldo-label">Saldo anterior</div><div class="saldo-val">'+sAntTxt+'</div></div>';
   }
 
-  // Balance
   var balOk=Math.abs(netoTotal)<1;
   var balTxt,balSub='';
   if(balOk){ balTxt='Estan al dia! 🎉'; }
@@ -463,7 +455,6 @@ function renderRes() {
     +'</div>';
 
   if(list.length){
-    // Chart por categoria
     var pc={};
     list.forEach(function(e){ pc[e.categoria]=(pc[e.categoria]||0)+e.importe; });
     var cl=Object.entries(pc).sort(function(a,b){ return b[1]-a[1]; });
@@ -483,13 +474,12 @@ function renderRes() {
     });
     h+='</div>';
 
-    // Lista
     h+='<div class="card"><div style="font-size:11px;font-weight:800;color:#aaa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Todos los gastos</div>';
     var sorted=[].concat(list).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
     sorted.forEach(function(e){
-      h+='<div class="res-entry" style="'+(e.pagado?'opacity:0.4':'')+'">'
-        +'<div class="res-left"><div class="res-name">'+e.categoria+'</div>'
-        +'<div class="res-meta">'+fmtDate(e.fecha)+(e.pagado?' · <span style="color:#16A34A;font-weight:700;">Saldado</span>':'')+'</div></div>'
+      h+='<div class="res-entry">'
+        +'<div class="res-left"><div class="res-name">'+e.categoria+(e.observacion?' <span style="font-size:11px;color:#aaa;font-weight:400;">'+e.observacion+'</span>':'')+'</div>'
+        +'<div class="res-meta">'+fmtDate(e.fecha)+'</div></div>'
         +'<div class="res-right"><div class="res-total">'+ars(e.importe)+'</div>'
         +'<div class="res-split"><span style="color:'+(e.pagador==='Sofi'?'#C9406A':'#2563EB')+'">'+e.pagador+'</span> · c/u '+ars(e.importe/2)+'</div>'
         +'</div></div>';
