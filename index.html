@@ -274,7 +274,7 @@ function load(cb) {
     .then(function(text){
       entries=parseCSV(text).map(function(r){
         // Columnas: id, fecha, pagador, categoria, importe, observacion, pagado
-        return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],importe:parseFloat(r[4])||0,observacion:r[5]||'',pagado:r[6]==='Si'};
+        return {id:String(r[0]),fecha:r[1],pagador:r[2],categoria:r[3],importe:parseFloat(r[4])||0,pagado:r[5]==='Si',observacion:r[6]||''};
       }).filter(function(e){ return e.id && e.importe > 0; });
       sync('ok'); fillMonths(); if(cb) cb();
     })
