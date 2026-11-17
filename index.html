@@ -50,8 +50,12 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
 .trend-bar.cur { background: #F0C040; }
 .trend-lbl { font-size: 10px; color: #999; margin-top: 4px; }
 .trend-val { font-size: 10px; color: #666; font-weight: 700; margin-bottom: 3px; }
-.tabs { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; background: #fff; border-bottom: 1px solid #E8E4DC; position: sticky; top: 53px; z-index: 19; }
-.tab { padding: 12px 2px; text-align: center; font-size: 12px; font-weight: 600; color: #999; cursor: pointer; border-bottom: 2px solid transparent; }
+.tb.sel.ing-s { background: #F0FDF4; border-color: #16A34A; color: #16A34A; }
+.tb.sel.pers-s { background: #FFF7ED; border-color: #EA580C; color: #EA580C; }
+.bpers { background: #FFF7ED; color: #EA580C; }
+.bing { background: #F0FDF4; color: #16A34A; }
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); background: #fff; border-bottom: 1px solid #E8E4DC; position: sticky; top: 53px; z-index: 19; }
+.tab { padding: 10px 1px; text-align: center; font-size: 11px; line-height: 1.5; font-weight: 600; color: #999; cursor: pointer; border-bottom: 2px solid transparent; }
 .tab.active { color: #1A1916; border-bottom-color: #F0C040; }
 .content { flex: 1; }
 .section { display: none; padding: 14px 14px 90px; }
@@ -169,10 +173,11 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
     </div>
   </div>
   <div class="tabs">
-    <div class="tab active" id="tbtn-cargar">➕ Cargar</div>
-    <div class="tab" id="tbtn-historial">📋 Historial</div>
-    <div class="tab" id="tbtn-resumen">📊 Resumen</div>
-    <div class="tab" id="tbtn-analisis">💡 Análisis</div>
+    <div class="tab active" id="tbtn-cargar">➕<br>Cargar</div>
+    <div class="tab" id="tbtn-historial">📋<br>Historial</div>
+    <div class="tab" id="tbtn-resumen">📊<br>Resumen</div>
+    <div class="tab" id="tbtn-mio">👤<br>Lo mío</div>
+    <div class="tab" id="tbtn-analisis">💡<br>Análisis</div>
   </div>
   <div class="content">
 
@@ -187,6 +192,13 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
         <div class="quick-hint" id="quick-hint">Escribí monto + qué fue. Ej: "12500 coto", "4800 uber guille"</div>
       </div>
       <div class="card">
+        <div class="field">
+          <div class="toggle-row">
+            <button type="button" class="tb sel" data-group="modo" data-val="comp">🤝 Compartido</button>
+            <button type="button" class="tb" data-group="modo" data-val="pers">👤 Personal</button>
+            <button type="button" class="tb" data-group="modo" data-val="ing">💰 Ingreso</button>
+          </div>
+        </div>
         <!-- 1. Importe primero: es lo único que siempre cambia -->
         <div class="field">
           <label for="importe">¿Cuánto?</label>
@@ -202,7 +214,7 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
           <button type="button" class="more-btn" id="more-cats">Ver todas ▾</button>
         </div>
         <!-- 3. Quién pagó -->
-        <div class="field">
+        <div class="field" id="field-pag">
           <label>¿Quién pagó?</label>
           <div class="toggle-row">
             <button type="button" class="tb sel sofi-s" data-group="pag" data-val="Sofi">🌸 Sofi</button>
@@ -248,6 +260,11 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
       <div id="r-content"><div class="lmsg">Cargando...</div></div>
     </div>
 
+    <div id="tab-mio" class="section">
+      <select id="m-mes" class="month-sel"></select>
+      <div id="m-content"><div class="lmsg">Cargando...</div></div>
+    </div>
+
     <div id="tab-analisis" class="section">
       <div id="a-content"><div class="lmsg">Cargando...</div></div>
     </div>
@@ -258,16 +275,24 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
 <div class="toast" id="toast"></div>
 
 <script>
-var SCRIPT  = 'https://script.google.com/macros/s/AKfycbwXEeve3_cofEUivESBCHHBH-fbq9_ZL92ze1EjnTFARdz9GSqfq1oDlrOrhAS1S9BS/exec';
+var SCRIPT  = 'https://script.google.com/macros/s/AKfycbxqH0QYOxH4fjvfAGIA6W8IrfuQEUXMTjpl8hsISoQYfhHnz8Doggo9BaAaOA9sLg2g/exec';
 var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQIiU3cnMG2aC9O0OmLqE-DmdI11UobljHNFw2GWEiGO7iMggCPqdbigKa1oCCxZHYz-oaQyHMOYX6k/pub?gid=0&single=true&output=csv';
 
-var CATS = ['🏠 Alquiler','🗒️ Expensas','💡 Luz','💧 Agua','🔥 Gas','🛜 Internet','🥗 Verduleria','🥩 Carnes','🛒 Super','💼 Comidas Trabajo','🚗 Auto','🎉 Salidas','🚕 Ubers','🍕 Delivery','🧹 Limpieza','🔧 Mantenimiento','💸 Saldo de deuda'];
+var CATS = ['🏠 Alquiler','🗒️ Expensas','💡 Luz','💧 Agua','🔥 Gas','🛜 Internet','🥗 Verduleria','🥩 Carnes','🥐 Panaderia','🛒 Super','💼 Comidas Trabajo','🚗 Auto','🎉 Salidas','🚕 Ubers','🍕 Delivery','🧹 Limpieza','🔧 Mantenimiento','💸 Saldo de deuda'];
 var CAT_SALDO = '💸 Saldo de deuda';
+// Gastos personales: las mismas (sin saldo de deuda) + algunas propias
+var CATS_PERS = CATS.filter(function(c){ return c!==CAT_SALDO; }).concat(['👕 Ropa','💊 Salud','💅 Cuidado personal','📱 Celular','🎁 Regalos','🏋️ Gym','💳 Tarjeta de crédito','📦 Otros']);
+var CATS_ING = ['💼 Sueldo','💻 Freelance / extra','🎁 Aguinaldo / bono','🔁 Reintegro','📦 Otro ingreso'];
+function catsDeModo(m){ return m==='ing' ? CATS_ING : m==='pers' ? CATS_PERS : CATS; }
+function modoDe(e){ return e.tipo==='Ingreso' ? 'ing' : e.ambito==='Personal' ? 'pers' : 'comp'; }
+function esComp(e){ return modoDe(e)==='comp'; }
+// Lo personal y los ingresos solo los ve quien los cargó
+function visible(e){ return esComp(e) || e.pagador===usuario; }
 var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 var CATS_VISIBLES = 9; // cuántas categorías se ven sin expandir
 
 var usuario = null;
-var state = { pag:'Sofi', cat:null, yapagado:'No' };
+var state = { pag:'Sofi', cat:null, yapagado:'No', modo:'comp' };
 var entries = [];
 var editingId = null;
 var showAllCats = false;
@@ -327,13 +352,15 @@ function parseCSV(text){
 function catsOrdenadas(){
   var cnt={}, now=Date.now();
   entries.forEach(function(e){
+    if(modoDe(e)!==state.modo || !visible(e)) return;
     // los gastos de los últimos 90 días pesan más
     var w = (now-new Date(e.fecha).getTime()) < 90*864e5 ? 3 : 1;
     cnt[e.categoria]=(cnt[e.categoria]||0)+w;
   });
-  return CATS.slice().sort(function(a,b){
+  var base=catsDeModo(state.modo);
+  return base.slice().sort(function(a,b){
     if(a===CAT_SALDO) return 1; if(b===CAT_SALDO) return -1; // saldo siempre al final
-    return (cnt[b]||0)-(cnt[a]||0) || CATS.indexOf(a)-CATS.indexOf(b);
+    return (cnt[b]||0)-(cnt[a]||0) || base.indexOf(a)-base.indexOf(b);
   });
 }
 function renderCats(){
@@ -353,7 +380,7 @@ $('more-cats').addEventListener('click',function(){ showAllCats=!showAllCats; re
 function renderObsList(){
   var seen={}, opts=[];
   entries.slice().sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); }).forEach(function(e){
-    if(e.observacion && e.categoria===state.cat && !seen[e.observacion]){ seen[e.observacion]=1; opts.push(e.observacion); }
+    if(e.observacion && visible(e) && e.categoria===state.cat && !seen[e.observacion]){ seen[e.observacion]=1; opts.push(e.observacion); }
   });
   $('obs-list').innerHTML=opts.slice(0,8).map(function(o){ return '<option value="'+esc(o)+'">'; }).join('');
 }
@@ -366,12 +393,23 @@ function selectToggle(group,val){
       b.classList.add('sel');
       if(group==='pag') b.classList.add(val==='Sofi'?'sofi-s':'guille-s');
       if(group==='cat') b.classList.add('cat-s');
+      if(group==='modo') b.classList.add(val==='ing'?'ing-s':val==='pers'?'pers-s':'cat-s');
     }
   });
+  var cambioModo = group==='modo' && state.modo!==val;
   state[group]=val;
+  if(group==='modo'){
+    var comp = val==='comp';
+    $('field-pag').style.display = comp ? '' : 'none';
+    $('field-yapagado').style.display = comp && state.cat!==CAT_SALDO ? '' : 'none';
+    if(!comp){ selectToggle('pag',usuario||'Sofi'); selectToggle('yapagado','No'); }
+    $('savebtn').classList.toggle('editing', !!editingId);
+    if(cambioModo){ state.cat=null; showAllCats=false; renderCats(); }
+    $('importe').dispatchEvent(new Event('input'));
+  }
   if(group==='cat'){
     var isSaldo = val===CAT_SALDO;
-    $('field-yapagado').style.display = isSaldo ? 'none' : '';
+    $('field-yapagado').style.display = isSaldo || state.modo!=='comp' ? 'none' : '';
     if(isSaldo) selectToggle('yapagado','No');
     renderObsList();
   }
@@ -398,7 +436,7 @@ $('importe').addEventListener('input',function(){
   var v=this.value, n=parseImporte(v), h=$('amount-hint');
   if(!v) h.innerHTML='Podés sumar: 1500+800+320';
   else if(isNaN(n)) h.innerHTML='<span style="color:#DC2626">Importe no válido</span>';
-  else h.innerHTML='= <b>'+ars(n)+'</b>'+(state.cat!==CAT_SALDO?' · mitad c/u '+ars(n/2):'');
+  else h.innerHTML='= <b>'+ars(n)+'</b>'+(state.modo==='comp'&&state.cat!==CAT_SALDO?' · mitad c/u '+ars(n/2):'');
 });
 // Enter en importe o nota = guardar
 ['importe','observacion'].forEach(function(id){
@@ -413,7 +451,7 @@ function setUsuario(u){
   $('main-app').style.display='block';
   $('header-user').textContent='Hola, '+u+'!';
   resetForm();
-  load(function(){ renderCats(); renderHist(); renderRes(); });
+  load(function(){ renderCats(); renderHist(); renderRes(); renderMio(); });
 }
 function cambiarUsuario(){
   try{ localStorage.removeItem('comp_user'); }catch(e){}
@@ -430,10 +468,12 @@ function load(cb){
   fetch(CSV_URL+'&t='+Date.now())
     .then(function(r){ return r.text(); })
     .then(function(text){
-      // columnas: id(0) fecha(1) pagador(2) categoria(3) importe(4) pagado(5) observacion(6)
+      // columnas: id(0) fecha(1) pagador(2) categoria(3) importe(4) pagado(5) observacion(6) tipo(7) ambito(8)
       entries=parseCSV(text).map(function(r){
         return { id:String(r[0]||''), fecha:r[1]||'', pagador:r[2]||'', categoria:r[3]||'',
-                 importe:parseFloat(r[4])||0, pagado:(r[5]||'').trim()==='Si', observacion:(r[6]||'').trim() };
+                 importe:parseFloat(r[4])||0, pagado:(r[5]||'').trim()==='Si', observacion:(r[6]||'').trim(),
+                 tipo:(r[7]||'').trim()==='Ingreso'?'Ingreso':'Gasto',
+                 ambito:(r[8]||'').trim()==='Personal'?'Personal':'Compartido' };
       }).filter(function(e){ return e.id && e.importe>0; });
       sync('ok'); fillMonths(); if(cb) cb();
     })
@@ -449,16 +489,19 @@ function post(body,cb){
 
 /* ---------- Tabs ---------- */
 function showTab(t){
-  ['cargar','historial','resumen','analisis'].forEach(function(n){
+  ['cargar','historial','resumen','mio','analisis'].forEach(function(n){
     $('tab-'+n).classList.toggle('active',n===t);
     $('tbtn-'+n).classList.toggle('active',n===t);
   });
   // Mostramos lo que ya tenemos al instante y refrescamos en segundo plano
   if(t==='historial'){ renderHist(); load(renderHist); }
   if(t==='resumen'){ renderRes(); load(renderRes); }
+  if(t==='mio'){ renderMio(); load(renderMio); }
   if(t==='analisis'){ renderAnalisis(); load(renderAnalisis); }
   window.scrollTo(0,0);
 }
+$('tbtn-mio').addEventListener('click',function(){ showTab('mio'); });
+$('m-mes').addEventListener('change',function(){ renderMio(); });
 $('tbtn-analisis').addEventListener('click',function(){ showTab('analisis'); });
 
 /* ---------- Carga rápida por texto ---------- */
@@ -469,10 +512,22 @@ var KEYWORDS = {
   '💡 Luz':['luz','edenor','edesur','epec'],
   '💧 Agua':['agua','aysa'],
   '🔥 Gas':['gas','metrogas','naturgy','garrafa'],
-  '🛜 Internet':['internet','wifi','fibertel','telecentro','personal','movistar','claro','flow'],
+  '🛜 Internet':['internet','wifi','fibertel','telecentro','movistar','claro','flow'],
+  '👕 Ropa':['ropa','zapatillas','remera','pantalon','campera','zapatos'],
+  '💊 Salud':['farmacia','remedio','medico','dentista','prepaga','obra social','psicologa','psicologo'],
+  '💅 Cuidado personal':['peluqueria','corte','manicura','unas','depilacion','maquillaje'],
+  '📱 Celular':['celular','recarga','plan celu'],
+  '🎁 Regalos':['regalo','cumple'],
+  '💳 Tarjeta de crédito':['tarjeta','visa','master','mastercard','amex','resumen tarjeta','pago tarjeta'],
+  '🏋️ Gym':['gym','gimnasio','cuota gym','pilates','yoga','futbol'],
+  '💼 Sueldo':['sueldo','salario','cobro','cobre'],
+  '💻 Freelance / extra':['freelance','extra','changa','trabajo extra','venta'],
+  '🎁 Aguinaldo / bono':['aguinaldo','bono','premio'],
+  '🔁 Reintegro':['reintegro','reembolso','cashback'],
   '🥗 Verduleria':['verduleria','verdu','verdura','verduras','fruta','frutas'],
   '🥩 Carnes':['carne','carniceria','pollo','asado','milanesas','pescado'],
-  '🛒 Super':['super','supermercado','coto','dia','carrefour','jumbo','disco','vea','changomas','chino','almacen','gaseosa','coca','leche','pan','panaderia','yerba','agua mineral'],
+  '🛒 Super':['super','supermercado','coto','dia','carrefour','jumbo','disco','vea','changomas','chino','almacen','gaseosa','coca','leche','yerba','agua mineral'],
+  '🥐 Panaderia':['panaderia','pan','facturas','medialunas','bizcochos','torta','sandwichitos','prepizza'],
   '💼 Comidas Trabajo':['almuerzo','vianda','trabajo'],
   '🚗 Auto':['nafta','ypf','shell','axion','peaje','estacionamiento','seguro','auto','patente','lavadero','gnc'],
   '🎉 Salidas':['salida','bar','cine','cerveza','birra','boliche','restaurant','resto','cena','teatro','recital'],
@@ -484,18 +539,20 @@ var KEYWORDS = {
 };
 function norm(s){ return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
 
-function adivinarCategoria(texto){
+function adivinarCategoria(texto,permitidas){
   var t=' '+norm(texto)+' ';
+  permitidas=permitidas||CATS;
   // 1) lo que ustedes ya escribieron antes como nota (aprende solo)
   var best=null, bestLen=0;
   entries.forEach(function(e){
+    if(permitidas.indexOf(e.categoria)<0 || !visible(e)) return;
     var o=norm(e.observacion||'');
     if(o.length>=3 && o.length>bestLen && t.indexOf(' '+o)>=0){ best=e.categoria; bestLen=o.length; }
   });
   if(best) return best;
   // 2) palabras clave (la más larga gana: "gaseosa" antes que "gas")
   var pares=[];
-  Object.keys(KEYWORDS).forEach(function(c){ KEYWORDS[c].forEach(function(k){ pares.push([k,c]); }); });
+  Object.keys(KEYWORDS).forEach(function(c){ if(permitidas.indexOf(c)>=0) KEYWORDS[c].forEach(function(k){ pares.push([k,c]); }); });
   pares.sort(function(a,b){ return b[0].length-a[0].length; });
   for(var i=0;i<pares.length;i++){
     if(new RegExp('\\b'+pares[i][0]).test(t)) return pares[i][1];
@@ -504,7 +561,9 @@ function adivinarCategoria(texto){
 }
 
 function interpretar(txt){
-  var res={ importe:NaN, cat:null, pagador:null, nota:'', ayer:false };
+  var res={ importe:NaN, cat:null, pagador:null, nota:'', ayer:false, modo:null };
+  // "+120000 freelance" → ingreso
+  if(/^\s*\+/.test(txt)){ res.modo='ing'; txt=txt.replace(/^\s*\+/,''); }
   var m=txt.match(/\$?\s*\d[\d.,]*(\s*\+\s*\d[\d.,]*)*/);
   if(m){ res.importe=parseImporte(m[0]); txt=txt.replace(m[0],' '); }
   var words=txt.split(/\s+/).filter(Boolean), resto=[];
@@ -513,23 +572,33 @@ function interpretar(txt){
     if(n==='sofi') res.pagador='Sofi';
     else if(n==='guille') res.pagador='Guille';
     else if(n==='ayer') res.ayer=true;
+    else if(n==='personal'||n==='mio'||n==='mia'){ if(!res.modo) res.modo='pers'; }
     else resto.push(w);
   });
   res.nota=resto.join(' ');
-  res.cat=adivinarCategoria(res.nota);
+  if(res.modo){ res.cat=adivinarCategoria(res.nota,catsDeModo(res.modo)); }
+  else {
+    // si no se aclaró, primero ¿es un ingreso? (sueldo, aguinaldo...), si no, compartido
+    var ing=adivinarCategoria(res.nota,CATS_ING);
+    if(ing){ res.modo='ing'; res.cat=ing; }
+    else { res.cat=adivinarCategoria(res.nota,CATS); res.modo='comp';
+      if(!res.cat){ var p=adivinarCategoria(res.nota,CATS_PERS); if(p){ res.cat=p; res.modo='pers'; } } }
+  }
   return res;
 }
 
 function cargaRapida(){
   var q=$('quick'), r=interpretar(q.value);
   if(isNaN(r.importe)||r.importe<=0){ $('quick-hint').innerHTML='<span style="color:#f87171">No encontré el monto. Ej: "3000 gaseosa"</span>'; return; }
+  selectToggle('modo',r.modo||state.modo);
   $('importe').value=r.importe; $('importe').dispatchEvent(new Event('input'));
   $('observacion').value=r.nota ? r.nota.charAt(0).toUpperCase()+r.nota.slice(1) : '';
   $('fecha').value = r.ayer ? daysAgoStr(1) : todayStr(); syncDateChips();
   if(r.pagador) selectToggle('pag',r.pagador);
   if(r.cat){
     state.cat=r.cat; renderCats(); selectToggle('cat',r.cat);
-    $('quick-hint').innerHTML='✓ '+ars(r.importe)+' en <b style="color:#fff">'+esc(r.cat)+'</b>. Tocá Listo otra vez para guardar.';
+    var etiqueta={comp:'compartido',pers:'personal',ing:'ingreso'}[state.modo];
+    $('quick-hint').innerHTML='✓ '+ars(r.importe)+' en <b style="color:#fff">'+esc(r.cat)+'</b> ('+etiqueta+'). Tocá Listo otra vez para guardar.';
     q.setAttribute('data-ready','1');
   } else {
     state.cat=null; renderCats();
@@ -549,7 +618,10 @@ var DISCRECIONALES = ['🎉 Salidas','🚕 Ubers','🍕 Delivery','💼 Comidas 
 var FIJOS = ['🏠 Alquiler','🗒️ Expensas','💡 Luz','💧 Agua','🔥 Gas','🛜 Internet'];
 
 function monthKeyOffset(n){ var d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-n); return d.getFullYear()+'-'+d.getMonth(); }
-function gastosMes(key){ return entries.filter(function(e){ return mk(e.fecha)===key && e.categoria!==CAT_SALDO; }); }
+// El análisis es sobre los gastos compartidos del hogar
+function gastosMes(key){ return entries.filter(function(e){ return mk(e.fecha)===key && esComp(e) && e.categoria!==CAT_SALDO; }); }
+function ingresosHogar(key){ return suma(entries.filter(function(e){ return mk(e.fecha)===key && e.tipo==='Ingreso'; })); }
+function gastosHogar(key){ return suma(entries.filter(function(e){ return mk(e.fecha)===key && e.tipo==='Gasto' && e.categoria!==CAT_SALDO; })); }
 function porCat(list){ var o={}; list.forEach(function(e){ o[e.categoria]=(o[e.categoria]||0)+e.importe; }); return o; }
 function suma(list){ return list.reduce(function(a,b){ return a+b.importe; },0); }
 
@@ -588,6 +660,15 @@ function renderAnalisis(){
     h+='<div class="balance-card '+(diff>promTotal*0.05?'debe':'ok')+'"><div class="b-label">A este ritmo</div><div class="b-main">'
       +(diff>promTotal*0.05 ? 'Van a gastar '+ars(diff)+' más que su promedio' : diff< -promTotal*0.05 ? 'Van '+ars(-diff)+' por debajo del promedio 👏' : 'Van en línea con su promedio')
       +'</div><div class="b-sub">Para no pasarse: máximo '+ars(Math.max(0,(promTotal-fijosEsperados-varCur)/Math.max(1,diasMes-dia+1)))+' por día en gastos variables</div></div>';
+  }
+
+  // Ingresos del hogar (solo el total, sin detalle de quién)
+  var ingH=ingresosHogar(curMK());
+  if(ingH>0){
+    var gH=gastosHogar(curMK()), pct=Math.round(gH/ingH*100);
+    h+='<div class="balance-card '+(pct>90?'debe':'ok')+'"><div class="b-label">Hogar este mes</div>'
+      +'<div class="b-main">Gastaron el '+pct+'% de lo que entró</div>'
+      +'<div class="b-sub">Entró '+ars(ingH)+' · gastado (compartido + personal) '+ars(gH)+' · queda '+ars(ingH-gH)+'</div></div>';
   }
 
   // Tendencia 6 meses
@@ -629,7 +710,7 @@ function renderAnalisis(){
     }
   });
   // c) delivery vs comida en casa
-  var comida = ['🛒 Super','🥗 Verduleria','🥩 Carnes'].reduce(function(a,c){ return a+(nPrev?promCat(c):(catCur[c]||0)); },0);
+  var comida = ['🛒 Super','🥗 Verduleria','🥩 Carnes','🥐 Panaderia'].reduce(function(a,c){ return a+(nPrev?promCat(c):(catCur[c]||0)); },0);
   var deliv = nPrev?promCat('🍕 Delivery'):(catCur['🍕 Delivery']||0);
   if(deliv>0 && comida>0 && deliv/comida>0.4){
     recos.push({ico:'🍳', peso:deliv*0.5, t:'Delivery = '+Math.round(deliv/comida*100)+'% de lo que gastan en comida para casa',
@@ -711,6 +792,7 @@ function resetForm(){
   $('quick').value=''; $('quick').removeAttribute('data-ready');
   $('quick-hint').innerHTML='Escribí monto + qué fue. Ej: "12500 coto", "4800 uber guille"';
   state.cat=null; showAllCats=false;
+  selectToggle('modo','comp');
   renderCats();
   selectToggle('pag',usuario||'Sofi');
   selectToggle('yapagado','No');
@@ -731,6 +813,7 @@ function fillForm(e,isEdit){
   $('fecha').value = isEdit && !isNaN(d.getTime()) ? dateStr(d) : todayStr();
   syncDateChips();
   $('observacion').value=e.observacion||'';
+  selectToggle('modo',modoDe(e));
   state.cat=e.categoria; renderCats(); selectToggle('cat',e.categoria);
   selectToggle('pag',e.pagador);
   selectToggle('yapagado',e.pagado?'Si':'No');
@@ -750,9 +833,12 @@ function guardar(){
     action: wasEditing?'edit':'add',
     id: editingId||String(Date.now()),
     fecha: new Date(fechaVal+'T12:00:00').toISOString(),
-    pagador: state.pag, categoria: state.cat, importe: imp,
-    pagado: state.cat===CAT_SALDO?'No':state.yapagado,
-    observacion: $('observacion').value.trim()
+    pagador: state.modo==='comp' ? state.pag : usuario,
+    categoria: state.cat, importe: imp,
+    pagado: state.modo!=='comp'||state.cat===CAT_SALDO ? 'No' : state.yapagado,
+    observacion: $('observacion').value.trim(),
+    tipo: state.modo==='ing' ? 'Ingreso' : 'Gasto',
+    ambito: state.modo==='comp' ? 'Compartido' : 'Personal'
   };
 
   post(body,function(ok){
@@ -760,13 +846,14 @@ function guardar(){
     if(ok){
       // Actualizamos la lista local al instante (sin esperar a Google)
       var local={ id:body.id, fecha:body.fecha, pagador:body.pagador, categoria:body.categoria,
-                  importe:imp, pagado:body.pagado==='Si', observacion:body.observacion };
+                  importe:imp, pagado:body.pagado==='Si', observacion:body.observacion,
+                  tipo:body.tipo, ambito:body.ambito };
       entries=entries.filter(function(x){ return x.id!==body.id; }).concat([local]);
       fillMonths();
       toast((wasEditing?'Cambios guardados':'Guardado')+' ✓ '+ars(imp));
       resetForm();
       if(wasEditing) showTab('historial');
-      setTimeout(function(){ load(function(){ renderHist(); renderRes(); }); },2500);
+      setTimeout(function(){ load(function(){ renderHist(); renderRes(); renderMio(); }); },2500);
     } else {
       btn.textContent=wasEditing?'Guardar cambios':'Guardar';
       toast('Error al guardar');
@@ -776,12 +863,13 @@ function guardar(){
 $('savebtn').addEventListener('click',guardar);
 
 function fillMonths(){
-  var hv=$('h-mes').value, rv=$('r-mes').value, keys=[];
+  var hv=$('h-mes').value, rv=$('r-mes').value, mv=$('m-mes').value, keys=[];
   entries.forEach(function(e){ var k=mk(e.fecha); if(k&&keys.indexOf(k)<0) keys.push(k); });
   var cur=curMK(); if(keys.indexOf(cur)<0) keys.push(cur);
   keys.sort(function(a,b){ var A=a.split('-'),B=b.split('-'); return (B[0]-A[0])||(B[1]-A[1]); });
   var opts=keys.map(function(k){ var p=k.split('-'); return '<option value="'+k+'">'+MESES[+p[1]]+' '+p[0]+'</option>'; }).join('');
-  $('h-mes').innerHTML=opts; $('r-mes').innerHTML=opts;
+  $('h-mes').innerHTML=opts; $('r-mes').innerHTML=opts; $('m-mes').innerHTML=opts;
+  $('m-mes').value = keys.indexOf(mv)>=0 ? mv : cur;
   // conserva el mes que estabas mirando
   $('h-mes').value = keys.indexOf(hv)>=0 ? hv : cur;
   $('r-mes').value = keys.indexOf(rv)>=0 ? rv : cur;
@@ -790,23 +878,25 @@ function fillMonths(){
 /* ---------- Historial ---------- */
 function renderHist(){
   var key=$('h-mes').value;
-  var list=entries.filter(function(e){ return mk(e.fecha)===key; })
+  var list=entries.filter(function(e){ return mk(e.fecha)===key && visible(e); })
     .sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
   var el=$('h-list');
   if(!list.length){ el.innerHTML='<div class="empty">Sin registros este mes</div>'; return; }
   el.innerHTML=list.map(function(e){
-    var isSaldo=e.categoria===CAT_SALDO;
+    var isSaldo=e.categoria===CAT_SALDO, modo=modoDe(e), verde=isSaldo||modo==='ing';
     return '<div class="entry" style="'+(e.pagado&&!isSaldo?'opacity:0.5':'')+'">'
       +'<div class="entry-top"><div style="min-width:0;flex:1;">'
       +'<div class="entry-name">'+esc(e.categoria)+'</div>'
       +(e.observacion?'<div class="entry-obs">'+esc(e.observacion)+'</div>':'')
       +'</div><div class="entry-right">'
-      +'<div class="entry-amount" style="color:'+(isSaldo?'#16A34A':'#DC2626')+'">'+(isSaldo?'-':'')+ars(e.importe)+'</div>'
+      +'<div class="entry-amount" style="color:'+(verde?'#16A34A':'#DC2626')+'">'+(isSaldo?'-':modo==='ing'?'+':'')+ars(e.importe)+'</div>'
       +'<button type="button" class="ibtn" data-act="rep" data-id="'+esc(e.id)+'" title="Repetir hoy">🔁</button>'
       +'<button type="button" class="ibtn" data-act="edit" data-id="'+esc(e.id)+'" title="Editar">✏️</button>'
       +'<button type="button" class="ibtn" data-act="del" data-id="'+esc(e.id)+'" title="Eliminar">✕</button>'
       +'</div></div><div class="entry-meta">'
-      +'<span class="badge '+(e.pagador==='Sofi'?'bs':'bg')+'">'+esc(e.pagador)+' pagó</span>'
+      +(modo==='ing'?'<span class="badge bing">💰 Ingreso</span>'
+        :modo==='pers'?'<span class="badge bpers">👤 Personal</span>'
+        :'<span class="badge '+(e.pagador==='Sofi'?'bs':'bg')+'">'+esc(e.pagador)+' pagó</span>')
       +(e.pagado&&!isSaldo?'<span class="badge bok">c/u pagó su mitad</span>':'')
       +(isSaldo?'<span class="badge bok">Saldo saldado</span>':'')
       +'<span class="edate">'+fmtDate(e.fecha)+'</span>'
@@ -827,7 +917,7 @@ function delEntry(id){
   post({action:'delete',id:id},function(ok){
     if(ok){
       entries=entries.filter(function(x){ return x.id!==id; });
-      renderHist(); toast('Eliminado');
+      renderHist(); renderMio(); toast('Eliminado');
       setTimeout(function(){ load(renderHist); },2500);
     } else toast('Error al eliminar');
   });
@@ -838,7 +928,7 @@ function delEntry(id){
 function calcNeto(key){
   var neto=0;
   entries.forEach(function(e){
-    if(mk(e.fecha)!==key || e.pagado) return;
+    if(mk(e.fecha)!==key || e.pagado || !esComp(e)) return;
     if(e.categoria===CAT_SALDO){ neto += e.pagador==='Sofi' ? -e.importe : e.importe; return; }
     neto += e.pagador==='Guille' ? e.importe/2 : -e.importe/2;
   });
@@ -856,7 +946,8 @@ function calcSaldoAnt(key){
 
 function renderRes(){
   var key=$('r-mes').value;
-  var list=entries.filter(function(e){ return mk(e.fecha)===key; });
+  // Solo lo compartido; ingresos y personales quedan fuera (salvo el total del hogar)
+  var list=entries.filter(function(e){ return mk(e.fecha)===key && esComp(e); });
   var gastos=list.filter(function(e){ return e.categoria!==CAT_SALDO; });
   var totalMes=gastos.reduce(function(a,b){ return a+b.importe; },0);
   var totalDeuda=gastos.filter(function(e){ return !e.pagado; }).reduce(function(a,b){ return a+b.importe; },0);
@@ -909,7 +1000,61 @@ function renderRes(){
     h+='</div>';
   } else h+='<div class="empty">Sin gastos este mes</div>';
 
+  // Total del hogar: suma de ingresos de los dos, sin detalle por persona
+  var ingH=ingresosHogar(key);
+  if(ingH>0){
+    var gH=gastosHogar(key), aho=ingH-gH;
+    h+='<div class="card"><div class="cats-title">🏡 Hogar (totales)</div>'
+      +'<div class="stat-grid" style="margin-bottom:0">'
+      +'<div class="stat"><div class="slabel">Ingresos</div><div class="sval" style="color:#16A34A">'+ars(ingH)+'</div></div>'
+      +'<div class="stat"><div class="slabel">'+(aho>=0?'Ahorro':'En rojo')+'</div><div class="sval" style="color:'+(aho>=0?'#16A34A':'#DC2626')+'">'+ars(Math.abs(aho))+'</div>'
+      +'<div class="res-meta">'+Math.round(aho/ingH*100)+'% de lo que entró</div></div></div>'
+      +'<div class="res-meta" style="margin-top:8px">Gastos totales (compartidos + personales): '+ars(gH)+'</div></div>';
+  }
   $('r-content').innerHTML=h;
+}
+
+/* ---------- Lo mío (solo lo ve cada uno) ---------- */
+function renderMio(){
+  if(!usuario) return;
+  var key=$('m-mes').value;
+  var mes=entries.filter(function(e){ return mk(e.fecha)===key; });
+  var ing=mes.filter(function(e){ return e.tipo==='Ingreso' && e.pagador===usuario; });
+  var pers=mes.filter(function(e){ return e.tipo==='Gasto' && e.ambito==='Personal' && e.pagador===usuario; });
+  var compGastos=mes.filter(function(e){ return esComp(e) && e.categoria!==CAT_SALDO; });
+  var tIng=suma(ing), tPers=suma(pers), miParte=suma(compGastos)/2;
+  var queda=tIng-tPers-miParte;
+  var h='<div class="stat-grid">'
+    +'<div class="stat"><div class="slabel">Me entró</div><div class="sval" style="color:#16A34A">'+ars(tIng)+'</div></div>'
+    +'<div class="stat"><div class="slabel">Gastos personales</div><div class="sval">'+ars(tPers)+'</div></div>'
+    +'<div class="stat"><div class="slabel">Mi mitad compartida</div><div class="sval">'+ars(miParte)+'</div></div>'
+    +'<div class="stat"><div class="slabel">'+(queda>=0?'Me queda':'En rojo')+'</div><div class="sval" style="color:'+(queda>=0?'#16A34A':'#DC2626')+'">'+ars(Math.abs(queda))+'</div>'
+    +(tIng?'<div class="res-meta">'+Math.round(queda/tIng*100)+'% de lo que entró</div>':'')+'</div></div>';
+  if(!tIng) h+='<div class="saldo-card"><div class="saldo-label">Tip</div><div class="saldo-val">Cargá tu sueldo en ➕ → 💰 Ingreso para ver cuánto te queda</div></div>';
+
+  if(pers.length){
+    var pc=porCat(pers), cl=Object.entries(pc).sort(function(a,b){ return b[1]-a[1]; }), mx=cl[0][1];
+    h+='<div class="card"><div class="cats-title">Mis gastos personales</div>';
+    cl.forEach(function(it){
+      h+='<div class="bar-row"><div class="bar-top"><span>'+esc(it[0])+'</span><span class="bar-val">'+ars(it[1])+'</span></div>'
+        +'<div class="bar-track"><div class="bar-fill" style="width:'+Math.round(it[1]/mx*100)+'%;background:#EA580C"></div></div></div>';
+    });
+    h+='</div>';
+  }
+  var mios=ing.concat(pers).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+  if(mios.length){
+    h+='<div class="card"><div class="cats-title">Movimientos</div>';
+    mios.forEach(function(e){
+      var esIng=e.tipo==='Ingreso';
+      h+='<div class="res-entry"><div class="res-left"><div class="res-name">'+esc(e.categoria)
+        +(e.observacion?' <span style="font-size:11px;color:#aaa;font-weight:400;">'+esc(e.observacion)+'</span>':'')
+        +'</div><div class="res-meta">'+fmtDate(e.fecha)+'</div></div>'
+        +'<div class="res-right"><div class="res-total" style="color:'+(esIng?'#16A34A':'#DC2626')+'">'+(esIng?'+':'')+ars(e.importe)+'</div></div></div>';
+    });
+    h+='</div>';
+  } else h+='<div class="empty">Sin movimientos personales este mes</div>';
+  h+='<div class="res-meta" style="text-align:center;margin-top:8px">🔒 Esta pestaña solo te la muestra la app a vos</div>';
+  $('m-content').innerHTML=h;
 }
 // Botón "Cargar pago": deja el formulario listo con el saldo de deuda
 $('r-content').addEventListener('click',function(ev){
