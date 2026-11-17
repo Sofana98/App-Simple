@@ -252,6 +252,12 @@ body { background: #F7F6F2; font-family: -apple-system, BlinkMacSystemFont, 'Seg
 
     <div id="tab-historial" class="section">
       <select id="h-mes" class="month-sel"></select>
+      <div class="chip-row" id="h-filtro">
+        <button type="button" class="chip sel" data-quien="">Todos</button>
+        <button type="button" class="chip" data-quien="Sofi">🌸 Sofi</button>
+        <button type="button" class="chip" data-quien="Guille">🏴‍☠️ Guille</button>
+      </div>
+      <div class="res-meta" id="h-total" style="margin:0 2px 8px"></div>
       <div class="card" id="h-list"><div class="lmsg">Cargando...</div></div>
     </div>
 
@@ -878,10 +884,12 @@ function fillMonths(){
 /* ---------- Historial ---------- */
 function renderHist(){
   var key=$('h-mes').value;
-  var list=entries.filter(function(e){ return mk(e.fecha)===key && visible(e); })
+  var list=entries.filter(function(e){ return mk(e.fecha)===key && visible(e) && (!filtroQuien || e.pagador===filtroQuien); })
     .sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
   var el=$('h-list');
-  if(!list.length){ el.innerHTML='<div class="empty">Sin registros este mes</div>'; return; }
+  var gastosF=list.filter(function(e){ return e.tipo==='Gasto' && e.categoria!==CAT_SALDO; });
+  $('h-total').textContent = list.length ? list.length+(list.length===1?' movimiento':' movimientos')+(filtroQuien?' de '+filtroQuien:'')+' · gastos '+ars(suma(gastosF)) : '';
+  if(!list.length){ el.innerHTML='<div class="empty">Sin registros'+(filtroQuien?' de '+filtroQuien:'')+' este mes</div>'; return; }
   el.innerHTML=list.map(function(e){
     var isSaldo=e.categoria===CAT_SALDO, modo=modoDe(e), verde=isSaldo||modo==='ing';
     return '<div class="entry" style="'+(e.pagado&&!isSaldo?'opacity:0.5':'')+'">'
@@ -903,6 +911,14 @@ function renderHist(){
       +'</div></div>';
   }).join('');
 }
+var filtroQuien='';
+document.querySelectorAll('#h-filtro .chip').forEach(function(c){
+  c.addEventListener('click',function(){
+    filtroQuien=c.getAttribute('data-quien');
+    document.querySelectorAll('#h-filtro .chip').forEach(function(x){ x.classList.toggle('sel',x===c); });
+    renderHist();
+  });
+});
 $('h-list').addEventListener('click',function(ev){
   var b=ev.target.closest('[data-act]'); if(!b) return;
   var id=b.getAttribute('data-id'), act=b.getAttribute('data-act');
